@@ -12,3 +12,113 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+model users {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  password     String
+  role         UserRoleEnum
+  phone        String
+  active       Boolean        @default(true)
+  created_at   DateTime       @default(now())
+  tokens       tokens[]
+  businesses   businesses[]
+  reservations reservations[]
+}
+
+model tokens {
+  id         String   @id @default(uuid())
+  user_id    String
+  token      String   @unique
+  active     Boolean  @default(true)
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  users users @relation(fields: [user_id], references: [id])
+}
+
+model businesses {
+  id          String   @id @default(uuid())
+  user_id     String
+  category_id String
+  name        String
+  description String   @db.LongText
+  address     String
+  phone       String
+  email       String   @unique
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  users               users               @relation(fields: [user_id], references: [id])
+  business_categories business_categories @relation(fields: [category_id], references: [id])
+  business_config     business_config[]
+  business_hours      business_hours[]
+  reservations        reservations[]
+}
+
+model business_categories {
+  id          String       @id @default(uuid())
+  business_id String
+  category    String
+  created_at  DateTime     @default(now())
+  businesses  businesses[]
+}
+
+model business_config {
+  id          String   @id @default(uuid())
+  business_id String
+  logo        String
+  color       String
+  created_at  DateTime @default(now())
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+}
+
+model business_hours {
+  id          String   @id @default(uuid())
+  business_id String
+  day_of_week Int
+  open_time   String
+  close_time  String
+  is_closed   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+}
+
+model reservations {
+  id                        String                      @id @default(uuid())
+  business_id               String
+  user_id                   String
+  reservation_date          DateTime
+  number_of_people          Int
+  status                    StatusEnum                  @default(PENDING)
+  active                    Boolean                     @default(true)
+  created_at                DateTime                    @default(now())
+  reservation_cancellations reservation_cancellations[]
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+  users      users      @relation(fields: [user_id], references: [id])
+}
+
+model reservation_cancellations {
+  id             String   @id @default(uuid())
+  reservation_id String
+  reason         String
+  cancelled_by   String
+  cancelled_at   DateTime @default(now())
+
+  reservations reservations @relation(fields: [reservation_id], references: [id])
+}
+
+enum StatusEnum {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum UserRoleEnum {
+  BUSINESS_OWNER
+  CUSTOMER
+}
