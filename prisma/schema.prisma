@@ -116,6 +116,7 @@ enum StatusEnum {
   PENDING
   CONFIRMED
   CANCELLED
+  COMPLETED
 }
 
 enum UserRoleEnum {
