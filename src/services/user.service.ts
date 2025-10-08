@@ -1,7 +1,7 @@
 import argon2 from "argon2"
 import { prisma } from "../utils/prisma"
 import jwt from "jsonwebtoken"
-import { AuthError, InternalServerError, UnauthorizedError } from "../middlewares/error"
+import { AuthError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
 
 const signup = async (body: any) => {
     const { name, email, password, phone } = body
@@ -102,7 +102,44 @@ const signin = async (body: any) => {
     }
 }
 
+const getUserById = async (userId: string) => {
+    const user = await prisma.users.findUnique({
+        where: {
+            id: userId,
+        },
+        include: {
+            tokens: true
+        }
+    });
+
+    if (!user) {
+        throw new AuthError("Usuario no encontrado");
+    }
+
+    return user;
+}
+
+const canCreateBusiness = async (userId: string) => {
+    const user = await prisma.users.findUnique({
+        where: {
+            id: userId
+        }
+    })
+
+    if (!user) {
+        throw new NotFoundError("Usuario no encontrado")
+    }
+
+    if (user?.role !== "BUSINESS_OWNER") {
+        throw new UnauthorizedError("No tienes permisos para crear un negocio")
+    } else {
+        return true
+    }
+}
+
 export const userService = {
     signup,
-    signin
+    signin,
+    getUserById,
+    canCreateBusiness
 }
