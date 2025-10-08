@@ -1,16 +1,13 @@
 import { NextFunction, Request, Response } from "express"
-import { prisma } from "../utils/prisma"
 import { businessService } from "../services/business.service"
 import { businessSchema } from "../schemas/business.schema"
 import { ValidationError } from "../middlewares/error"
 
 const getBusinesses = async (req: Request, res: Response, next: NextFunction) => {
+    const { categoryId } = req.query
+
     try {
-        const businesses = await prisma.businesses.findMany({
-            where: {
-                active: true
-            }
-        })
+        const businesses = await businessService.getBusinesses(categoryId as string)
         return res.status(200).json(businesses)
     } catch (error) {
         next(error)

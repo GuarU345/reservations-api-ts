@@ -33,7 +33,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         const user = await userService.getUserById(tokenExists.user_id)
 
         req.user = {
-            id: user.id
+            id: user.id,
+            role: user.role
         }
 
         next()

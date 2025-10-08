@@ -2,11 +2,12 @@ import { InternalServerError, NotFoundError } from "../middlewares/error"
 import { prisma } from "../utils/prisma"
 import { userService } from "./user.service"
 
-const getBusinesses = async () => {
+const getBusinesses = async (categoryId?: string) => {
     try {
         const businesses = await prisma.businesses.findMany({
             where: {
-                active: true
+                active: true,
+                category_id: categoryId
             }
         })
 
