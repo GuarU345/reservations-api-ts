@@ -1,6 +1,7 @@
 import argon2 from "argon2"
 import { prisma } from "../utils/prisma"
 import jwt from "jsonwebtoken"
+import { AuthError, InternalServerError, UnauthorizedError } from "../middlewares/error"
 
 const signup = async (body: any) => {
     const { name, email, password, phone } = body
@@ -23,9 +24,9 @@ const signup = async (body: any) => {
         })
 
         if (userExists && userExists.email === email) {
-            throw new Error("La cuenta con ese email ya existe")
+            throw new AuthError("La cuenta con ese email ya existe")
         } else if (userExists && userExists.name === name) {
-            throw new Error("El nombre de usuario ya existe")
+            throw new AuthError("El nombre de usuario ya existe")
         }
 
         const newUser = await prisma.users.create({
@@ -40,7 +41,10 @@ const signup = async (body: any) => {
 
         return newUser
     } catch (error) {
-        throw new Error("Error al tratar de registrarse")
+        if (error instanceof AuthError) {
+            throw error
+        }
+        throw new InternalServerError("Error al tratar de registrarse")
     }
 }
 
@@ -58,7 +62,7 @@ const signin = async (body: any) => {
         })
 
         if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
-            throw new Error("Credenciales invalidas")
+            throw new UnauthorizedError("Credenciales invalidas")
         }
 
         const tokenIds = isRegister.tokens.map(token => token.id)
@@ -94,7 +98,7 @@ const signin = async (body: any) => {
             user_id: newToken.user_id,
         }
     } catch (error) {
-
+        throw error
     }
 }
 
