@@ -38,6 +38,25 @@ const getBusinessById = async (businessId: string) => {
     }
 }
 
+const getBusinessByOwnerId = async (ownerId: string) => {
+    try {
+        const business = await prisma.businesses.findFirst({
+            where: {
+                user_id: ownerId,
+                active: true
+            }
+        })
+
+        if (!business) {
+            throw new NotFoundError("Negocio no encontrado")
+        }
+
+        return business
+    } catch (error) {
+        throw error
+    }
+}
+
 const getBusinessHoursByBusinessId = async (businessId: string) => {
     const business = await businessService.getBusinessById(businessId)
 
@@ -166,6 +185,7 @@ export const businessService = {
     getBusinesses,
     getBusinessById,
     getBusinessHoursByBusinessId,
+    getBusinessByOwnerId,
     createBusiness,
     updateBusiness,
     deleteBusiness
