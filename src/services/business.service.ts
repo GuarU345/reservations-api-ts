@@ -66,7 +66,6 @@ const createBusiness = async (body: any) => {
 
         return newBusiness
     } catch (error) {
-        console.log(error)
         throw new InternalServerError("Error al tratar de crear el negocio")
     }
 }

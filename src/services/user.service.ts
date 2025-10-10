@@ -90,12 +90,24 @@ const signin = async (body: any) => {
                 token: token,
                 user_id: isRegister.id,
                 expires_at: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+            },
+            include: {
+                users: {
+                    select: {
+                        name: true,
+                        email: true
+                    }
+                }
             }
         })
 
         return {
             token: newToken.token,
-            user_id: newToken.user_id,
+            user: {
+                id: newToken.user_id,
+                name: newToken.users.name,
+                email: newToken.users.email
+            }
         }
     } catch (error) {
         throw error
