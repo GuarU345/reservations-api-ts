@@ -25,6 +25,17 @@ const getBusinessById = async (req: Request, res: Response, next: NextFunction) 
     }
 }
 
+const getBusinessHoursByBusinessId = async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params
+
+    try {
+        const businessHours = await businessService.getBusinessHoursByBusinessId(id)
+        res.status(200).json(businessHours)
+    } catch (error) {
+        next(error)
+    }
+}
+
 const createBusiness = async (req: Request, res: Response, next: NextFunction) => {
     const result = businessSchema.safeParse(req.body)
 
@@ -81,6 +92,7 @@ const deleteBusiness = async (req: Request, res: Response, next: NextFunction) =
 export const businessController = {
     getBusinesses,
     getBusinessById,
+    getBusinessHoursByBusinessId,
     createBusiness,
     updateBusiness,
     deleteBusiness

@@ -1,5 +1,7 @@
-import { InternalServerError, NotFoundError } from "../middlewares/error"
+import { InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
 import { prisma } from "../utils/prisma"
+import { businessCategoryService } from "./business-category.service"
+import { businessHoursService } from "./business-hours.service"
 import { userService } from "./user.service"
 
 const getBusinesses = async (categoryId?: string) => {
@@ -36,6 +38,25 @@ const getBusinessById = async (businessId: string) => {
     }
 }
 
+const getBusinessHoursByBusinessId = async (businessId: string) => {
+    const business = await businessService.getBusinessById(businessId)
+
+    try {
+        const businessHours = await prisma.business_hours.findMany({
+            where: {
+                business_id: business.id
+            },
+            orderBy: {
+                day_of_week: 'asc'
+            }
+        })
+
+        return businessHours
+    } catch (error) {
+        throw new InternalServerError('Error al tratar de obtener los horarios del negocio')
+    }
+}
+
 const createBusiness = async (body: any) => {
     const {
         name,
@@ -47,25 +68,33 @@ const createBusiness = async (body: any) => {
         categoryId
     } = body
 
-    const isValidUser = await userService.canCreateBusiness(userId)
-
-    if (!isValidUser) return
+    await userService.canCreateBusiness(userId)
+    const category = await businessCategoryService.getBussinessCategoryById(categoryId)
 
     try {
-        const newBusiness = await prisma.businesses.create({
-            data: {
-                name,
-                description,
-                address,
-                phone,
-                email,
-                user_id: userId,
-                category_id: categoryId
-            }
+        const { newBusiness } = await prisma.$transaction(async (tx) => {
+            const newBusiness = await tx.businesses.create({
+                data: {
+                    name,
+                    description,
+                    address,
+                    phone,
+                    email,
+                    user_id: userId,
+                    category_id: category.id
+                }
+            })
+
+            await businessHoursService.initializeBusinessHours(newBusiness.id, tx)
+
+            return { newBusiness }
         })
 
         return newBusiness
     } catch (error) {
+        if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+            throw error
+        }
         throw new InternalServerError("Error al tratar de crear el negocio")
     }
 }
@@ -136,6 +165,7 @@ const verifyBusinessOwner = async (businessId: string, userId: string) => {
 export const businessService = {
     getBusinesses,
     getBusinessById,
+    getBusinessHoursByBusinessId,
     createBusiness,
     updateBusiness,
     deleteBusiness
