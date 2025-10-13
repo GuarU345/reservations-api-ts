@@ -1,3 +1,4 @@
+import { UserRoleEnum } from "@prisma/client"
 import { z } from "zod"
 
 export const userSchema = z.object({
@@ -25,11 +26,24 @@ export const userSchema = z.object({
         .max(13, { message: "El teléfono no puede tener más de 13 dígitos" })
         .regex(/^(?:\+52|52)?\d{10}$/, {
             message: "El teléfono debe ser un número válido de 10 dígitos, con o sin el prefijo +52"
-        })
-});
+        }),
 
-export const signinSchema = userSchema.partial({
-    name: true,
-    phone: true,
+    role: z
+        .string({ message: "El rol es requerido" })
+}).refine((data) => {
+    const validRoles = Object.values(UserRoleEnum)
+    if (!validRoles.includes(data.role as UserRoleEnum)) {
+        return false
+    }
+    return true
+},
+    {
+        message: `El rol debe de ser CUSTOMER o BUSINESS_OWNER`
+    }
+)
+
+export const signinSchema = userSchema.pick({
+    email: true,
+    password: true
 })
 
