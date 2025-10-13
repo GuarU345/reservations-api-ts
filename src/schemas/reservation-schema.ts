@@ -3,11 +3,11 @@ import { z } from "zod"
 export const reservationSchema = z.object({
     businessId: z.string({ message: "El negocio es requerido" }),
 
-    startTime: z.string()
+    startTime: z.string({ message: "La hora de inicio es requerida" })
         .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de inicio debe ser válida" })
         .refine((date) => new Date(date) > new Date(), { message: "La hora de inicio debe ser futura" }),
 
-    endTime: z.string()
+    endTime: z.string({ message: "La hora de finalización es requerida" })
         .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de finalización debe ser válida" })
         .refine((date) => new Date(date) > new Date(), { message: "La hora de finalización debe ser futura" }),
 
