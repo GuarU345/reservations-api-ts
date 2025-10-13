@@ -5,7 +5,7 @@ import { AuthError, ConflictError, InternalServerError, NotFoundError, Unauthori
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 
 const signup = async (body: any) => {
-    const { name, email, password, phone } = body
+    const { name, email, password, phone, role } = body
 
     try {
         const hashedPassword = await argon2.hash(password)
@@ -35,7 +35,7 @@ const signup = async (body: any) => {
                 name,
                 email,
                 password: hashedPassword,
-                role: "CUSTOMER",
+                role,
                 phone
             }
         })
