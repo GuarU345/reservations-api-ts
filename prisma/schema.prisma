@@ -19,7 +19,7 @@ model users {
   email        String         @unique
   password     String
   role         UserRoleEnum
-  phone        String
+  phone        String         @unique
   active       Boolean        @default(true)
   created_at   DateTime       @default(now())
   tokens       tokens[]
@@ -45,7 +45,7 @@ model businesses {
   name        String
   description String   @db.LongText
   address     String
-  phone       String
+  phone       String   @unique
   email       String   @unique
   active      Boolean  @default(true)
   created_at  DateTime @default(now())
