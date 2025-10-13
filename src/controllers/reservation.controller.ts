@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { reservationService } from "../services/reservation.service";
+import { cancelReservationSchema, reservationSchema } from "../schemas/reservation-schema";
+import { ValidationError } from "../middlewares/error";
 
 const getReservations = async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req
@@ -12,6 +14,52 @@ const getReservations = async (req: Request, res: Response, next: NextFunction) 
     }
 }
 
+const createReservation = async (req: Request, res: Response, next: NextFunction) => {
+    const result = reservationSchema.safeParse(req.body)
+
+    if (!result.success) {
+        throw new ValidationError(result.error)
+    }
+
+    const body = {
+        ...result.data,
+        userId: req.user?.id
+    }
+
+    try {
+        const reservation = await reservationService.createReservation(body)
+        return res.status(201).json(reservation)
+    } catch (error) {
+        next(error)
+    }
+}
+
+const cancelReservation = async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params
+
+    const result = cancelReservationSchema.safeParse(req.body)
+
+    if (!result.success) {
+        throw new ValidationError(result.error)
+    }
+
+    const body = {
+        ...result.data,
+        userId: req.user?.id
+    }
+
+    try {
+        await reservationService.cancelReservation(id, body)
+        return res.status(200).json({
+            message: "Reservación cancelada correctamente"
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const reservationController = {
-    getReservations
+    getReservations,
+    createReservation,
+    cancelReservation
 }
