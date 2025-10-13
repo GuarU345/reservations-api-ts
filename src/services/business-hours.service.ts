@@ -15,7 +15,7 @@ const initializeBusinessHours = async (businessId: string, tx: any) => {
     const daysData = days.map((day, index) => {
         return {
             business_id: businessId,
-            day_of_week: index + 1,
+            day_of_week: index,
             is_closed: true
         }
     })
