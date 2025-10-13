@@ -1,3 +1,4 @@
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 import { ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
 import { prisma } from "../utils/prisma"
 import { businessCategoryService } from "./business-category.service"
@@ -111,10 +112,16 @@ const createBusiness = async (body: any) => {
 
         return newBusiness
     } catch (error) {
-        console.log(error)
         if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
             throw error
         }
+
+        if (error instanceof PrismaClientKnownRequestError) {
+            if (error.code === 'P2002' && String(error?.meta?.target).includes('phone')) {
+                throw new ConflictError("El numero de telefono ya esta en uso")
+            }
+        }
+
         throw new InternalServerError("Error al tratar de crear el negocio")
     }
 }
@@ -182,10 +189,12 @@ const verifyBusinessOwner = async (businessId: string, userId: string) => {
     return business
 }
 
-const isAvailableDay = async (businessId: string, reservationDate: string) => {
+const isAvailableDay = async (businessId: string, startTime: string, endTime: string) => {
     const businessHours = await getBusinessHoursByBusinessId(businessId)
 
-    const dayOfWeek = new Date(reservationDate).getDay()
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    const dayOfWeek = start.getDay()
     const hoursForDay = businessHours.find(businessH => businessH.day_of_week === dayOfWeek)
 
     if (!hoursForDay || hoursForDay.is_closed) {
@@ -194,12 +203,14 @@ const isAvailableDay = async (businessId: string, reservationDate: string) => {
 
     const [openHour, openMinute] = hoursForDay.open_time!.split(':').map(Number)
     const [closeHour, closeMinute] = hoursForDay.close_time!.split(':').map(Number)
-    const reservationMinutes = new Date(reservationDate).getHours() * 60 + new Date(reservationDate).getMinutes()
     const openTotal = openHour * 60 + openMinute
     const closeTotal = closeHour * 60 + closeMinute
 
-    if (reservationMinutes < openTotal || reservationMinutes >= closeTotal) {
-        throw new ConflictError("La reservacion no esta dentro del horario de atencion")
+    const startMinutes = start.getHours() * 60 + start.getMinutes()
+    const endMinutes = end.getHours() * 60 + end.getMinutes()
+
+    if (startMinutes < openTotal || endMinutes > closeTotal) {
+        throw new ConflictError("La reservación no está dentro del horario de atención del negocio")
     }
 }
 

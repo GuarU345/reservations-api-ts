@@ -1,7 +1,8 @@
 import argon2 from "argon2"
 import { prisma } from "../utils/prisma"
 import jwt from "jsonwebtoken"
-import { AuthError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
+import { AuthError, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 
 const signup = async (body: any) => {
     const { name, email, password, phone } = body
@@ -44,6 +45,13 @@ const signup = async (body: any) => {
         if (error instanceof AuthError) {
             throw error
         }
+
+        if (error instanceof PrismaClientKnownRequestError) {
+            if (error.code === 'P2002' && String(error?.meta?.target).includes('phone')) {
+                throw new ConflictError("El numero de telefono ya esta en uso")
+            }
+        }
+
         throw new InternalServerError("Error al tratar de registrarse")
     }
 }
