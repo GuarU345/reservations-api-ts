@@ -34,6 +34,13 @@ const getBusinessHoursById = async (businessHoursId: string) => {
         const businessHours = await prisma.business_hours.findUnique({
             where: {
                 id: businessHoursId
+            },
+            include: {
+                businesses: {
+                    select: {
+                        user_id: true
+                    }
+                }
             }
         })
 
@@ -51,10 +58,15 @@ const updateBusinessHours = async (businessHoursId: string, body: any) => {
     const {
         openTime,
         closeTime,
-        isClosed
+        isClosed,
+        userId
     } = body
 
     const businessHours = await getBusinessHoursById(businessHoursId)
+
+    if (businessHours.businesses.user_id !== userId) {
+        throw new ConflictError('No tienes permiso para actualizar el horario de este negocio')
+    }
 
     try {
         const updatedHours = await prisma.business_hours.update({
@@ -70,6 +82,9 @@ const updateBusinessHours = async (businessHoursId: string, body: any) => {
 
         return updatedHours
     } catch (error) {
+        if (error instanceof ConflictError) {
+            throw error
+        }
         throw new InternalServerError('Error al tratar de actualizar el horario del negocio')
     }
 }

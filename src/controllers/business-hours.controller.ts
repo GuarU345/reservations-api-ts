@@ -12,7 +12,10 @@ const updateBusinessHours = async (req: Request, res: Response, next: NextFuncti
         throw new ValidationError(result.error)
     }
 
-    const body = result.data
+    const body = {
+        ...result.data,
+        userId: req?.user?.id
+    }
 
     try {
         const updatedHours = await businessHoursService.updateBusinessHours(id, body)
