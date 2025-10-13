@@ -95,7 +95,8 @@ const signin = async (body: any) => {
                 users: {
                     select: {
                         name: true,
-                        email: true
+                        email: true,
+                        role: true
                     }
                 }
             }
@@ -106,7 +107,8 @@ const signin = async (body: any) => {
             user: {
                 id: newToken.user_id,
                 name: newToken.users.name,
-                email: newToken.users.email
+                email: newToken.users.email,
+                role: newToken.users.role
             }
         }
     } catch (error) {
@@ -149,9 +151,28 @@ const canCreateBusiness = async (userId: string) => {
     }
 }
 
+const canCreateReservation = async (userId: string) => {
+    const user = await prisma.users.findUnique({
+        where: {
+            id: userId
+        }
+    })
+
+    if (!user) {
+        throw new NotFoundError("Usuario no encontrado")
+    }
+
+    if (user?.role !== "CUSTOMER") {
+        throw new UnauthorizedError("No tienes permisos para crear una reservacion")
+    } else {
+        return true
+    }
+}
+
 export const userService = {
     signup,
     signin,
     getUserById,
-    canCreateBusiness
+    canCreateBusiness,
+    canCreateReservation
 }
