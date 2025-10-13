@@ -34,6 +34,19 @@ const createReservation = async (req: Request, res: Response, next: NextFunction
     }
 }
 
+const confirmReservation = async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params
+
+    try {
+        await reservationService.confirmReservation(id)
+        return res.status(200).json({
+            message: "Reservación confirmada correctamente"
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 const cancelReservation = async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
 
@@ -58,8 +71,23 @@ const cancelReservation = async (req: Request, res: Response, next: NextFunction
     }
 }
 
+const completeReservation = async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params
+
+    try {
+        await reservationService.completeReservation(id)
+        return res.status(200).json({
+            message: "Reservación completada correctamente"
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const reservationController = {
     getReservations,
     createReservation,
-    cancelReservation
+    confirmReservation,
+    cancelReservation,
+    completeReservation
 }

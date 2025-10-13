@@ -2,26 +2,43 @@ import { z } from "zod"
 
 export const reservationSchema = z.object({
     businessId: z.string({ message: "El negocio es requerido" }),
-    reservationDate: z.string()
-        .refine((date) => !isNaN(Date.parse(date)), { message: "La fecha de reservación debe ser válida" })
-        .refine((date) => new Date(date) > new Date(), { message: "La fecha de reservación debe ser futura" }),
-    numberOfPeople: z.number({ message: "El numero de personas debe de ser un numero" })
+
+    startTime: z.string()
+        .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de inicio debe ser válida" })
+        .refine((date) => new Date(date) > new Date(), { message: "La hora de inicio debe ser futura" }),
+
+    endTime: z.string()
+        .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de finalización debe ser válida" })
+        .refine((date) => new Date(date) > new Date(), { message: "La hora de finalización debe ser futura" }),
+
+    numberOfPeople: z.number({ message: "El número de personas debe ser un número" })
         .min(1, { message: "Debe haber al menos una persona" })
         .max(8, { message: "No se permite más de 8 personas por reservación" }),
 })
+    // Validar que la hora de fin sea posterior a la de inicio
+    .refine((data) => new Date(data.endTime) > new Date(data.startTime), {
+        message: "La hora de finalización debe ser posterior a la hora de inicio",
+        path: ["endTime"],
+    })
+    // Validar que ambas horas estén dentro del rango permitido (08:00 - 22:00)
     .refine((data) => {
-        const reservationTime = new Date(data.reservationDate);
-        const hour = reservationTime.getHours();
-        const minute = reservationTime.getMinutes();
+        const start = new Date(data.startTime)
+        const end = new Date(data.endTime)
 
-        //validar que no sea antes de las 8:00 ni después de las 22:00
-        const totalMinutes = hour * 60 + minute
-        if (totalMinutes < 8 * 60 || totalMinutes > 22 * 60) return false
-        return true
+        const startMinutes = start.getHours() * 60 + start.getMinutes()
+        const endMinutes = end.getHours() * 60 + end.getMinutes()
+
+        const OPEN_TIME = 8 * 60  // 08:00
+        const CLOSE_TIME = 22 * 60 // 22:00
+
+        return (
+            startMinutes >= OPEN_TIME &&
+            endMinutes <= CLOSE_TIME
+        )
     }, {
-        message: "La hora de la reservación debe estar entre 08:00 y 22:00",
-        path: ["reservationDate"],
-    });
+        message: "Las horas de la reservación deben estar entre 08:00 y 22:00",
+        path: ["startTime"],
+    })
 
 export const cancelReservationSchema = z.object({
     reason: z

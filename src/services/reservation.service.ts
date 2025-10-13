@@ -19,6 +19,12 @@ const getReservations = async (user: any) => {
                     business_id: business.id
                 },
                 include: {
+                    users: {
+                        select: {
+                            name: true,
+                            email: true
+                        }
+                    },
                     reservation_cancellations: {
                         select: {
                             reason: true,
@@ -93,23 +99,25 @@ const createReservation = async (body: any) => {
     const {
         businessId,
         userId,
-        reservationDate,
+        startTime,
+        endTime,
         numberOfPeople,
     } = body
 
     await userService.canCreateReservation(userId)
     const business = await businessService.getBusinessById(businessId)
-    await activeReservationToday(userId, business.id, reservationDate)
+    await activeReservationToday(userId, business.id, startTime)
 
-    await isDisponibleForReservation(business.id, reservationDate)
-    await businessService.isAvailableDay(business.id, reservationDate)
+    await isDisponibleForReservation(business.id, startTime, endTime)
+    await businessService.isAvailableDay(business.id, startTime, endTime)
 
     try {
         const reservation = await prisma.reservations.create({
             data: {
                 business_id: business.id,
                 user_id: userId,
-                reservation_date: new Date(reservationDate),
+                start_time: new Date(startTime),
+                end_time: new Date(endTime),
                 number_of_people: numberOfPeople,
                 status: "PENDING"
             }
@@ -117,7 +125,6 @@ const createReservation = async (body: any) => {
 
         return reservation
     } catch (error) {
-        console.log(error)
         if (error instanceof ConflictError) {
             throw error
         }
@@ -132,8 +139,12 @@ const cancelReservation = async (reservationId: string, body: any) => {
     } = body
 
     const reservation = await getReservationById(reservationId)
+    const business = await businessService.getBusinessById(reservation.business_id)
 
-    if (reservation.user_id !== userId) {
+    const isReservationClient = reservation.user_id === userId
+    const isBusinessOwner = business.user_id === userId
+
+    if (!isReservationClient && !isBusinessOwner) {
         throw new ConflictError("No tienes permiso para cancelar esta reservación")
     }
 
@@ -141,11 +152,18 @@ const cancelReservation = async (reservationId: string, body: any) => {
         throw new ConflictError("La reservación ya se encuentra cancelada")
     }
 
+    if (reservation.status === "CONFIRMED" || reservation.status === "COMPLETED") {
+        throw new ConflictError("No se puede cancelar una reservación confirmada o completada")
+    }
+
     try {
         const canceledReservation = await prisma.$transaction(async (tx) => {
             const updatedReservation = await tx.reservations.update({
                 where: { id: reservationId },
-                data: { status: "CANCELLED" }
+                data: {
+                    status: "CANCELLED",
+                    active: false
+                }
             })
 
             await tx.reservation_cancellations.create({
@@ -168,8 +186,8 @@ const cancelReservation = async (reservationId: string, body: any) => {
     }
 }
 
-const activeReservationToday = async (userId: string, businessId: string, reservationDate: string) => {
-    const targetDate = new Date(reservationDate);
+const activeReservationToday = async (userId: string, businessId: string, startTime: string) => {
+    const targetDate = new Date(startTime);
     targetDate.setHours(0, 0, 0, 0);
 
     const userReservations = await getReservationsByUserId(userId);
@@ -179,7 +197,7 @@ const activeReservationToday = async (userId: string, businessId: string, reserv
             && res.status !== "PENDING"
             && res.business_id === businessId) return false
 
-        const resDate = new Date(res.reservation_date)
+        const resDate = new Date(res.start_time)
         resDate.setHours(0, 0, 0, 0);
 
         return resDate.getTime() === targetDate.getTime()
@@ -192,14 +210,20 @@ const activeReservationToday = async (userId: string, businessId: string, reserv
     return
 }
 
-const isDisponibleForReservation = async (businessId: string, reservationDate: string) => {
+const isDisponibleForReservation = async (businessId: string, startTime: string, endTime: string) => {
+    const newStart = new Date(startTime)
+    const newEnd = new Date(endTime)
+
     const existingReservation = await prisma.reservations.findFirst({
         where: {
             business_id: businessId,
-            reservation_date: new Date(reservationDate),
             status: {
                 in: ["PENDING", "CONFIRMED"]
-            }
+            },
+            AND: [
+                { start_time: { lt: newEnd } },
+                { end_time: { gt: newStart } }
+            ]
         }
     })
 
@@ -208,8 +232,77 @@ const isDisponibleForReservation = async (businessId: string, reservationDate: s
     }
 }
 
+const confirmReservation = async (reservationId: string) => {
+    const reservation = await getReservationById(reservationId)
+
+    if (reservation.status === "CONFIRMED") {
+        throw new ConflictError("La reservación ya se encuentra confirmada")
+    }
+
+    if (reservation.status === "CANCELLED") {
+        throw new ConflictError("No se puede confirmar una reservación cancelada")
+    }
+
+    if (reservation.status === "COMPLETED") {
+        throw new ConflictError("No se puede confirmar una reservación completada")
+    }
+
+    try {
+        const confirmedReservation = await prisma.reservations.update({
+            where: {
+                id: reservationId
+            },
+            data: {
+                status: "CONFIRMED"
+            }
+        })
+
+        return confirmedReservation
+    } catch (error) {
+        if (error instanceof ConflictError) {
+            throw error
+        }
+        throw new Error("Error al tratar de confirmar la reservación")
+    }
+}
+
+const completeReservation = async (reservationId: string) => {
+    const reservation = await getReservationById(reservationId)
+
+    if (reservation.status === "COMPLETED") {
+        throw new ConflictError("La reservación ya se encuentra completada")
+    }
+
+    if (reservation.status === "CANCELLED") {
+        throw new ConflictError("No se puede completar una reservación cancelada")
+    }
+
+    if (reservation.status === "PENDING") {
+        throw new ConflictError("No se puede completar una reservación pendiente, debe ser confirmada primero")
+    }
+
+    try {
+        const completedReservation = await prisma.reservations.update({
+            where: {
+                id: reservationId
+            },
+            data: {
+                status: "COMPLETED"
+            }
+        })
+        return completedReservation
+    } catch (error) {
+        if (error instanceof ConflictError) {
+            throw error
+        }
+        throw new Error("Error al tratar de completar la reservación")
+    }
+}
+
 export const reservationService = {
     getReservations,
     createReservation,
-    cancelReservation
+    confirmReservation,
+    cancelReservation,
+    completeReservation
 }
