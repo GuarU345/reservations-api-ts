@@ -12,14 +12,14 @@
   "dependencies": {
     "@prisma/client": "6.16.0",
     "argon2": "^0.44.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "prisma": "^6.16.0",
-    "zod": "^4.1.12"
+    "express": "5.1.0",
+    "jsonwebtoken": "9.0.2",
+    "prisma": "6.16.0",
+    "zod": "4.1.12"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.10",
-    "typescript": "^5.9.2"
+    "@types/express": "5.0.3",
+    "@types/jsonwebtoken": "9.0.10",
+    "typescript": "5.9.2"
   }
 }
