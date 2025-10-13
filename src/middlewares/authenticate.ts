@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../utils/prisma";
 import jwt from "jsonwebtoken";
 import { userService } from "../services/user.service";
+import { AuthError } from "./error";
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -21,11 +22,11 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         })
 
         if (!tokenExists) {
-            return res.status(401).json({ error: "Token invalido" })
+            throw new AuthError("Token inválido")
         }
 
         if (tokenExists.expires_at < new Date()) {
-            return res.status(401).json({ error: "Token expirado" })
+            throw new AuthError("Token expirado")
         }
 
         jwt.verify(token, process.env.JWT_SECRET || "")
