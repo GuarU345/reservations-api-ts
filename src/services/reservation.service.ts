@@ -192,19 +192,19 @@ const activeReservationToday = async (userId: string, businessId: string, startT
 
     const userReservations = await getReservationsByUserId(userId);
 
-    const activeReservation = userReservations.find(res => {
-        if (res.status !== "CONFIRMED"
-            && res.status !== "PENDING"
-            && res.business_id === businessId) return false
+    const activeReservations = userReservations.filter(resev =>
+        resev.business_id === businessId &&
+        ["CONFIRMED", "PENDING"].includes(resev.status)
+    )
 
-        const resDate = new Date(res.start_time)
+    const hasReservationToday = activeReservations.some(resev => {
+        const resDate = new Date(resev.start_time)
         resDate.setHours(0, 0, 0, 0);
-
         return resDate.getTime() === targetDate.getTime()
-    });
+    })
 
-    if (activeReservation) {
-        throw new ConflictError("El usuario ya tiene una reservación activa para este día")
+    if (hasReservationToday) {
+        throw new ConflictError("Ya tienes una reservacion activa para este negocio")
     }
 
     return
