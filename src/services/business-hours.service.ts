@@ -89,35 +89,7 @@ const updateBusinessHours = async (businessHoursId: string, body: any) => {
     }
 }
 
-const closeBusinessHours = async (businessHoursId: string) => {
-    const businessHours = await getBusinessHoursById(businessHoursId)
-
-    if (businessHours.is_closed) {
-        throw new ConflictError('El horario del negocio ya está cerrado')
-    }
-
-    try {
-        const closedHours = await prisma.business_hours.update({
-            where: {
-                id: businessHours.id
-            },
-            data: {
-                is_closed: true,
-                open_time: null,
-                close_time: null,
-            }
-        })
-        return closedHours
-    } catch (error) {
-        if (error instanceof ConflictError) {
-            throw error
-        }
-        throw new InternalServerError('Error al tratar de cerrar el horario del negocio')
-    }
-}
-
 export const businessHoursService = {
     updateBusinessHours,
-    closeBusinessHours,
     initializeBusinessHours
 }
