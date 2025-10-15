@@ -4,10 +4,12 @@ import { businessCategoryRoutes } from "./business-category.routes";
 import { businessRoutes } from "./business.routes";
 import { businessHoursRoutes } from "./business-hours.routes";
 import { reservationRoutes } from "./reservation.routes";
+import { userRoutes } from "./user.routes";
 
 export const router = Router();
 
 router.use(authRoutes)
+router.use(userRoutes)
 router.use(businessCategoryRoutes)
 router.use(businessRoutes)
 router.use(businessHoursRoutes)

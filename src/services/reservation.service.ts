@@ -1,7 +1,7 @@
 import { UserRoleEnum } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 import { businessService } from "./business.service";
-import { userService } from "./user.service";
+import { authService } from "./auth.service";
 import { ConflictError, NotFoundError } from "../middlewares/error";
 
 const getReservations = async (user: any) => {
@@ -80,7 +80,7 @@ const getReservationById = async (reservationId: string) => {
 }
 
 const getReservationsByUserId = async (userId: string) => {
-    const user = await userService.getUserById(userId)
+    const user = await authService.getUserById(userId)
 
     try {
         const reservations = await prisma.reservations.findMany({
@@ -104,7 +104,7 @@ const createReservation = async (body: any) => {
         numberOfPeople,
     } = body
 
-    await userService.canCreateReservation(userId)
+    await authService.canCreateReservation(userId)
     const business = await businessService.getBusinessById(businessId)
     await activeReservationToday(userId, business.id, startTime)
 
