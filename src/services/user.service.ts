@@ -1,186 +1,109 @@
-import argon2 from "argon2"
+import { ConflictError, InternalServerError, NotFoundError } from "../middlewares/error"
 import { prisma } from "../utils/prisma"
-import jwt from "jsonwebtoken"
-import { AuthError, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { authService } from "./auth.service"
+import { businessService } from "./business.service"
 
-const signup = async (body: any) => {
-    const { name, email, password, phone, role } = body
+const getLikedBusinesses = async (userId: string) => {
+    const user = await authService.getUserById(userId)
+
+    if (user.role !== "CUSTOMER") {
+        throw new ConflictError('No tienes permiso para realizar esta acción')
+    }
 
     try {
-        const hashedPassword = await argon2.hash(password)
-
-        const userExists = await prisma.users.findFirst({
+        const likedBusinesses = await prisma.user_business_likes.findMany({
             where: {
-                OR:
-                    [
-                        {
-                            email
-                        },
-                        {
-                            name
-                        }
-                    ]
+                user_id: user.id
             }
         })
 
-        if (userExists && userExists.email === email) {
-            throw new AuthError("La cuenta con ese email ya existe")
-        } else if (userExists && userExists.name === name) {
-            throw new AuthError("El nombre de usuario ya existe")
+        const businessesIds = likedBusinesses.map(liked => liked.business_id)
+
+        if (businessesIds.length === 0) {
+            return []
         }
 
-        const newUser = await prisma.users.create({
-            data: {
-                name,
-                email,
-                password: hashedPassword,
-                role,
-                phone
+        const businessesData = await prisma.businesses.findMany({
+            where: {
+                id: {
+                    in: businessesIds
+                }
             }
         })
 
-        return newUser
+        return businessesData
     } catch (error) {
-        if (error instanceof AuthError) {
+        if (error instanceof ConflictError) {
             throw error
         }
-
-        if (error instanceof PrismaClientKnownRequestError) {
-            if (error.code === 'P2002' && String(error?.meta?.target).includes('phone')) {
-                throw new ConflictError("El numero de telefono ya esta en uso")
-            }
-        }
-
-        throw new InternalServerError("Error al tratar de registrarse")
+        throw new Error('Error al tratar de consultar tus negocios favoritos')
     }
 }
 
-const signin = async (body: any) => {
-    const { email, password } = body
+const likeBusiness = async (userId: string, businessId: string) => {
+    const foundUser = await authService.getUserById(userId)
+    const business = await businessService.getBusinessById(businessId)
+
+    if (foundUser.role !== "CUSTOMER") {
+        throw new ConflictError('No tienes permiso para realizar esta acción')
+    }
 
     try {
-        const isRegister = await prisma.users.findUnique({
-            where: {
-                email
-            },
-            include: {
-                tokens: true
-            }
-        })
-
-        if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
-            throw new UnauthorizedError("Credenciales invalidas")
-        }
-
-        const tokenIds = isRegister.tokens.map(token => token.id)
-
-        if (tokenIds.length > 0) {
-            await prisma.tokens.update({
-                data: {
-                    active: false
-                },
-                where: {
-                    id: tokenIds[0]
-                }
-            })
-        }
-
-        const secretKey = process.env.JWT_SECRET || ""
-
-        const token = jwt.sign(
-            { id: isRegister.id, email: isRegister.email, role: isRegister.role },
-            secretKey
-        )
-
-        const newToken = await prisma.tokens.create({
+        const likeBusiness = await prisma.user_business_likes.create({
             data: {
-                token: token,
-                user_id: isRegister.id,
-                expires_at: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
-            },
-            include: {
-                users: {
-                    select: {
-                        name: true,
-                        email: true,
-                        role: true
-                    }
-                }
+                user_id: foundUser.id,
+                business_id: business.id
             }
         })
 
-        return {
-            token: newToken.token,
-            user: {
-                id: newToken.user_id,
-                name: newToken.users.name,
-                email: newToken.users.email,
-                role: newToken.users.role
-            }
-        }
+        return likeBusiness
     } catch (error) {
-        throw error
+        if (error instanceof ConflictError) {
+            throw error
+        }
+        throw new InternalServerError('Error al tratar de agregar a tus favoritos')
     }
 }
 
-const getUserById = async (userId: string) => {
-    const user = await prisma.users.findUnique({
-        where: {
-            id: userId,
-        },
-        include: {
-            tokens: true
+const dislikeBusiness = async (userId: string, businessId: string) => {
+    const foundUser = await authService.getUserById(userId)
+    const business = await businessService.getBusinessById(businessId)
+
+    if (foundUser.role !== "CUSTOMER") {
+        throw new ConflictError('No tienes permiso para realizar esta acción')
+    }
+
+    try {
+        const likedBusiness = await prisma.user_business_likes.findFirst({
+            where: {
+                AND: [
+                    { user_id: foundUser.id },
+                    { business_id: business.id }
+                ]
+            }
+        })
+
+        if (!likedBusiness) {
+            throw new NotFoundError('No se encontro el negocio en tus favoritos')
         }
-    });
 
-    if (!user) {
-        throw new AuthError("Usuario no encontrado");
-    }
+        await prisma.user_business_likes.delete({
+            where: {
+                id: likedBusiness.id
+            }
+        })
 
-    return user;
-}
-
-const canCreateBusiness = async (userId: string) => {
-    const user = await prisma.users.findUnique({
-        where: {
-            id: userId
+        return likeBusiness
+    } catch (error) {
+        if (error instanceof NotFoundError || error instanceof ConflictError) {
+            throw error
         }
-    })
-
-    if (!user) {
-        throw new NotFoundError("Usuario no encontrado")
-    }
-
-    if (user?.role !== "BUSINESS_OWNER") {
-        throw new UnauthorizedError("No tienes permisos para crear un negocio")
-    } else {
-        return true
-    }
-}
-
-const canCreateReservation = async (userId: string) => {
-    const user = await prisma.users.findUnique({
-        where: {
-            id: userId
-        }
-    })
-
-    if (!user) {
-        throw new NotFoundError("Usuario no encontrado")
-    }
-
-    if (user?.role !== "CUSTOMER") {
-        throw new UnauthorizedError("No tienes permisos para crear una reservacion")
-    } else {
-        return true
+        throw new InternalServerError('Error al tratar de eliminar de tus favoritos')
     }
 }
 
 export const userService = {
-    signup,
-    signin,
-    getUserById,
-    canCreateBusiness,
-    canCreateReservation
+    getLikedBusinesses,
+    likeBusiness,
+    dislikeBusiness
 }

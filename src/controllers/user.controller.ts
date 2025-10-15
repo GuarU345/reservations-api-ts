@@ -1,43 +1,47 @@
-import { NextFunction, Request, Response } from "express";
-import { signinSchema, userSchema } from "../schemas/user.schema";
+import { Request, Response, NextFunction } from "express";
 import { userService } from "../services/user.service";
-import { ValidationError } from "../middlewares/error";
 
-const signup = async (req: Request, res: Response, next: NextFunction) => {
-    const result = userSchema.safeParse(req.body)
-
-    if (!result.success) {
-        throw new ValidationError(result.error)
-    }
-
-    const body = result.data
+const getLikedBusinesses = async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user?.id as string
 
     try {
-        const newUser = await userService.signup(body)
-        return res.status(201).json(newUser)
+        const likedBusinesses = await userService.getLikedBusinesses(userId)
+        return res.status(200).json(likedBusinesses)
     } catch (error) {
         next(error)
     }
 }
 
-const signin = async (req: Request, res: Response, next: NextFunction) => {
-    const result = signinSchema.safeParse(req.body)
-
-    if (!result.success) {
-        throw new ValidationError(result.error)
-    }
-
-    const body = result.data
+const likeBusiness = async (req: Request, res: Response, next: NextFunction) => {
+    const { businessId } = req.params
+    const userId = req.user?.id as string
 
     try {
-        const userData = await userService.signin(body)
-        return res.status(200).json(userData)
+        await userService.likeBusiness(userId, businessId)
+        return res.status(200).json({
+            message: 'Negocio agregado a tus favoritos'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+const dislikeBusiness = async (req: Request, res: Response, next: NextFunction) => {
+    const { businessId } = req.params
+    const userId = req.user?.id as string
+
+    try {
+        await userService.dislikeBusiness(userId, businessId)
+        return res.status(200).json({
+            message: 'Negocio eliminado de tus favoritos'
+        })
     } catch (error) {
         next(error)
     }
 }
 
 export const userController = {
-    signup,
-    signin
+    getLikedBusinesses,
+    likeBusiness,
+    dislikeBusiness
 }
