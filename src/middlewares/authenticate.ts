@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../utils/prisma";
 import jwt from "jsonwebtoken";
-import { userService } from "../services/user.service";
+import { authService } from "../services/auth.service";
 import { AuthError } from "./error";
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
@@ -31,7 +31,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
         jwt.verify(token, process.env.JWT_SECRET || "")
 
-        const user = await userService.getUserById(tokenExists.user_id)
+        const user = await authService.getUserById(tokenExists.user_id)
 
         req.user = {
             id: user.id,
