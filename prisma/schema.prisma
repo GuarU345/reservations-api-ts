@@ -14,17 +14,18 @@ datasource db {
 }
 
 model users {
-  id           String         @id @default(uuid())
-  name         String
-  email        String         @unique
-  password     String
-  role         UserRoleEnum
-  phone        String         @unique
-  active       Boolean        @default(true)
-  created_at   DateTime       @default(now())
-  tokens       tokens[]
-  businesses   businesses[]
-  reservations reservations[]
+  id                  String                @id @default(uuid())
+  name                String
+  email               String                @unique
+  password            String
+  role                UserRoleEnum
+  phone               String                @unique
+  active              Boolean               @default(true)
+  created_at          DateTime              @default(now())
+  tokens              tokens[]
+  businesses          businesses[]
+  reservations        reservations[]
+  user_business_likes user_business_likes[]
 }
 
 model tokens {
@@ -50,11 +51,12 @@ model businesses {
   active      Boolean  @default(true)
   created_at  DateTime @default(now())
 
-  users               users               @relation(fields: [user_id], references: [id])
-  business_categories business_categories @relation(fields: [category_id], references: [id])
+  users               users                 @relation(fields: [user_id], references: [id])
+  business_categories business_categories   @relation(fields: [category_id], references: [id])
   business_config     business_config[]
   business_hours      business_hours[]
   reservations        reservations[]
+  user_business_likes user_business_likes[]
 }
 
 model business_categories {
@@ -111,6 +113,15 @@ model reservation_cancellations {
   cancelled_at   DateTime @default(now())
 
   reservations reservations @relation(fields: [reservation_id], references: [id])
+}
+
+model user_business_likes {
+  id          String @id @default(uuid())
+  user_id     String
+  business_id String
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+  users      users      @relation(fields: [user_id], references: [id])
 }
 
 enum StatusEnum {
