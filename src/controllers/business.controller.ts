@@ -5,9 +5,10 @@ import { ValidationError } from "../middlewares/error"
 
 const getBusinesses = async (req: Request, res: Response, next: NextFunction) => {
     const { categoryId } = req.query
+    const userId = req.user?.id
 
     try {
-        const businesses = await businessService.getBusinesses(categoryId as string)
+        const businesses = await businessService.getBusinesses(userId, categoryId as string)
         return res.status(200).json(businesses)
     } catch (error) {
         next(error)

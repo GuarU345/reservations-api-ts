@@ -3,18 +3,42 @@ import { ConflictError, InternalServerError, NotFoundError, UnauthorizedError } 
 import { prisma } from "../utils/prisma"
 import { businessCategoryService } from "./business-category.service"
 import { businessHoursService } from "./business-hours.service"
+import { authService } from "./auth.service"
 import { userService } from "./user.service"
 
-const getBusinesses = async (categoryId?: string) => {
+const getBusinesses = async (userId?: string, categoryId?: string) => {
     try {
         const businesses = await prisma.businesses.findMany({
             where: {
                 active: true,
                 category_id: categoryId
+            },
+            include: {
+                business_categories: {
+                    select: {
+                        category: true
+                    }
+                }
             }
         })
 
-        return businesses
+        if (userId) {
+            const likedBusinesses = await userService.getLikedBusinesses(userId)
+
+            const likedBusinessIds = likedBusinesses.map(liked => liked.id)
+
+            const businessesWithLike = businesses.map(business => ({
+                ...business,
+                liked: likedBusinessIds.includes(business.id)
+            }))
+
+            return businessesWithLike
+        }
+
+        return businesses.map(business => ({
+            ...business,
+            liked: false
+        }))
     } catch (error) {
         throw new InternalServerError("Error al tratar de obtener los negocios")
     }
@@ -26,6 +50,24 @@ const getBusinessById = async (businessId: string) => {
             where: {
                 id: businessId,
                 active: true
+            },
+            include: {
+                business_categories: {
+                    select: {
+                        category: true
+                    }
+                },
+                business_hours: {
+                    select: {
+                        day_of_week: true,
+                        open_time: true,
+                        close_time: true,
+                        is_closed: true
+                    },
+                    orderBy: {
+                        day_of_week: 'asc'
+                    }
+                }
             }
         })
 
@@ -88,7 +130,7 @@ const createBusiness = async (body: any) => {
         categoryId
     } = body
 
-    await userService.canCreateBusiness(userId)
+    await authService.canCreateBusiness(userId)
     const category = await businessCategoryService.getBussinessCategoryById(categoryId)
 
     try {
