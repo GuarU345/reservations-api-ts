@@ -28,6 +28,13 @@ const getLikedBusinesses = async (userId: string) => {
                 id: {
                     in: businessesIds
                 }
+            },
+            include: {
+                business_categories: {
+                    select: {
+                        category: true
+                    }
+                }
             }
         })
 
