@@ -2,23 +2,13 @@ import { ConflictError, InternalServerError, NotFoundError } from "../middleware
 import { prisma } from "../utils/prisma"
 
 const initializeBusinessHours = async (businessId: string, tx: any) => {
-    const days = [
-        'Lunes',
-        'Martes',
-        'Miércoles',
-        'Jueves',
-        'Viernes',
-        'Sábado',
-        'Domingo'
-    ]
-
-    const daysData = days.map((day, index) => {
-        return {
-            business_id: businessId,
-            day_of_week: index,
-            is_closed: true
-        }
-    })
+    const daysData = Array.from({ length: 7 }, (_, index) => ({
+        business_id: businessId,
+        day_of_week: index,
+        is_closed: true,
+        open_time: null,
+        close_time: null,
+    }))
 
     try {
         await tx.business_hours.createMany({
@@ -74,8 +64,8 @@ const updateBusinessHours = async (businessHoursId: string, body: any) => {
                 id: businessHours.id
             },
             data: {
-                open_time: openTime,
-                close_time: closeTime,
+                open_time: isClosed ? null : openTime,
+                close_time: isClosed ? null : closeTime,
                 is_closed: isClosed
             }
         })

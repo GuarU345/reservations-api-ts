@@ -1,3 +1,4 @@
+import { Prisma, UserRoleEnum } from "@prisma/client"
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 import { ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
 import { prisma } from "../utils/prisma"
@@ -6,33 +7,60 @@ import { businessHoursService } from "./business-hours.service"
 import { authService } from "./auth.service"
 import { userService } from "./user.service"
 
-const getBusinesses = async (userId?: string, categoryId?: string) => {
+type GetBusinessesParams = {
+    requesterId?: string
+    requesterRole?: UserRoleEnum
+    categoryId?: string
+    onlyOwner?: boolean
+}
+
+const getBusinesses = async ({ requesterId, requesterRole, categoryId, onlyOwner }: GetBusinessesParams) => {
+    const where: Prisma.businessesWhereInput = {
+        active: true,
+    }
+
+    if (categoryId) {
+        where.category_id = categoryId
+    }
+
+    if (onlyOwner) {
+        if (!requesterId) {
+            throw new UnauthorizedError("No se pudo identificar al propietario del negocio")
+        }
+
+        if (requesterRole !== UserRoleEnum.BUSINESS_OWNER) {
+            throw new UnauthorizedError("Solo los dueños de negocio pueden listar sus negocios")
+        }
+
+        where.user_id = requesterId
+    }
+
     try {
         const businesses = await prisma.businesses.findMany({
-            where: {
-                active: true,
-                category_id: categoryId
-            },
+            where,
             include: {
                 business_categories: {
                     select: {
                         category: true
                     }
                 }
+            },
+            orderBy: {
+                created_at: "desc"
             }
         })
 
-        if (userId) {
-            const likedBusinesses = await userService.getLikedBusinesses(userId)
+        const isCustomerRequester = requesterRole === UserRoleEnum.CUSTOMER && Boolean(requesterId)
+
+        if (isCustomerRequester && requesterId) {
+            const likedBusinesses = await userService.getLikedBusinesses(requesterId)
 
             const likedBusinessIds = likedBusinesses.map(liked => liked.id)
 
-            const businessesWithLike = businesses.map(business => ({
+            return businesses.map(business => ({
                 ...business,
                 liked: likedBusinessIds.includes(business.id)
             }))
-
-            return businessesWithLike
         }
 
         return businesses.map(business => ({
@@ -153,7 +181,7 @@ const createBusiness = async (body: any) => {
         })
 
         return newBusiness
-    } catch (error) {
+    } catch (error: unknown) {
         if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
             throw error
         }
@@ -236,10 +264,10 @@ const isAvailableDay = async (businessId: string, startTime: string, endTime: st
 
     const start = new Date(startTime)
     const end = new Date(endTime)
-    const dayOfWeek = start.getDay()
+    const dayOfWeek = start.getUTCDay()
     const hoursForDay = businessHours.find(businessH => businessH.day_of_week === dayOfWeek)
 
-    if (!hoursForDay || hoursForDay.is_closed) {
+    if (!hoursForDay || hoursForDay.is_closed || !hoursForDay.open_time || !hoursForDay.close_time) {
         throw new ConflictError("El negocio esta cerrado ese dia")
     }
 

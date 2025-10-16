@@ -2,9 +2,18 @@ import express from 'express'
 import cors from 'cors'
 import { router } from './routes/routes'
 import { errorHandler } from './middlewares/handle-error'
+import { prisma } from './utils/prisma'
 
 const app = express()
 const port = process.env.PORT || 3000
+
+prisma.$connect()
+    .then(() => {
+        console.log('Connected to the database')
+    })
+    .catch((error) => {
+        console.error('Error connecting to the database', error)
+    })
 
 app.use(cors())
 app.use(express.json())
