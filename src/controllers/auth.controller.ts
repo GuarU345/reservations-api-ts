@@ -42,7 +42,7 @@ const logout = async (req: Request, res: Response, next: NextFunction) => {
 
     try {
         await authService.logout(userId)
-        res.json(200).json({
+        return res.status(200).json({
             message: 'Sesión cerrada correctamente'
         })
     } catch (error) {

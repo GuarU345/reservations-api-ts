@@ -6,7 +6,7 @@ const router = Router();
 
 router.post("/signup", authController.signup)
 router.post("/signin", authController.signin)
-router.delete("/logout", authenticate, authController.logout)
+router.post("/logout", authenticate, authController.logout)
 router.get("/session/active", authController.isActiveToken)
 
 export { router as authRoutes }
