@@ -44,6 +44,7 @@ export const userSchema = z.object({
 
 export const signinSchema = userSchema.pick({
     email: true,
-    password: true
+    password: true,
+    role: true
 })
 

@@ -57,7 +57,7 @@ const signup = async (body: any) => {
 }
 
 const signin = async (body: any) => {
-    const { email, password } = body
+    const { email, password, role } = body
 
     try {
         const isRegister = await prisma.users.findUnique({
@@ -69,53 +69,59 @@ const signin = async (body: any) => {
             }
         })
 
-        if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
-            throw new UnauthorizedError("Credenciales invalidas")
+        if (isRegister?.role !== role) {
+            throw new UnauthorizedError("No tienes permiso para acceder a esta aplicación")
         }
 
-        const tokenIds = isRegister.tokens.map(token => token.id)
-
-        if (tokenIds.length > 0) {
-            await prisma.tokens.update({
-                data: {
-                    active: false
-                },
-                where: {
-                    id: tokenIds[0]
-                }
-            })
+        if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
+            throw new UnauthorizedError("Credenciales invalidas")
         }
 
         const secretKey = process.env.JWT_SECRET || ""
 
         const token = jwt.sign(
             { id: isRegister.id, email: isRegister.email, role: isRegister.role },
-            secretKey
+            secretKey,
+            { expiresIn: "12h" }
         )
 
-        const newToken = await prisma.tokens.create({
-            data: {
-                token: token,
-                user_id: isRegister.id,
-                expires_at: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
-            },
-            include: {
-                users: {
-                    select: {
-                        name: true,
-                        email: true,
-                        role: true
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.tokens.updateMany({
+                where: {
+                    user_id: isRegister.id,
+                    active: true
+                },
+                data: {
+                    active: false
+                }
+            })
+
+            const newToken = await tx.tokens.create({
+                data: {
+                    token: token,
+                    user_id: isRegister.id,
+                    expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000)
+                },
+                include: {
+                    users: {
+                        select: {
+                            name: true,
+                            email: true,
+                            role: true
+                        }
                     }
                 }
-            }
+            })
+
+            return newToken
         })
 
         return {
-            token: newToken.token,
+            token: result.token,
             user: {
-                name: newToken.users.name,
-                email: newToken.users.email,
-                role: newToken.users.role
+                name: result.users.name,
+                email: result.users.email,
+                role: result.users.role
             }
         }
     } catch (error) {
@@ -138,6 +144,32 @@ const getUserById = async (userId: string) => {
     }
 
     return user;
+}
+
+const logout = async (userId: string) => {
+    const user = await getUserById(userId)
+
+    try {
+        const activeToken = user.tokens.find(tok => tok.active)
+
+        if (!activeToken) {
+            throw new NotFoundError("Sesión no encontrada")
+        }
+
+        await prisma.tokens.update({
+            where: {
+                id: activeToken.id
+            },
+            data: {
+                active: false
+            }
+        })
+    } catch (error) {
+        if (error instanceof NotFoundError) {
+            throw error
+        }
+        throw new Error('Error al tratar de eliminar la sesión')
+    }
 }
 
 const canCreateBusiness = async (userId: string) => {
@@ -176,10 +208,30 @@ const canCreateReservation = async (userId: string) => {
     }
 }
 
+const isActiveToken = async (token: string) => {
+    try {
+        const tokenActive = await prisma.tokens.findFirst({
+            where: {
+                token
+            }
+        })
+
+        if (!tokenActive) return false
+
+        const isValid = tokenActive.active && tokenActive.expires_at > new Date()
+
+        return isValid
+    } catch (error) {
+        throw new InternalServerError('Error al tratar de consultar la sesión')
+    }
+}
+
 export const authService = {
     signup,
     signin,
     getUserById,
+    logout,
     canCreateBusiness,
-    canCreateReservation
+    canCreateReservation,
+    isActiveToken
 }

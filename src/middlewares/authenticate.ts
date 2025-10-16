@@ -26,6 +26,11 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         }
 
         if (tokenExists.expires_at < new Date()) {
+            await prisma.tokens.update({
+                where: { id: tokenExists.id },
+                data: { active: false }
+            })
+
             throw new AuthError("Token expirado")
         }
 
