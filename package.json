@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "seed": "pnpm prisma db seed"
   },
   "keywords": [],
   "author": "",
@@ -27,5 +28,8 @@
   },
   "volta": {
     "node": "22.20.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
