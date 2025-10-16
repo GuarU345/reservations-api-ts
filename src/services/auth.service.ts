@@ -168,7 +168,7 @@ const logout = async (userId: string) => {
         if (error instanceof NotFoundError) {
             throw error
         }
-        throw new Error('Error al tratar de eliminar la sesión')
+        throw new InternalServerError('Error al tratar de eliminar la sesión')
     }
 }
 

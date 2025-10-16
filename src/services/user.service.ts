@@ -43,7 +43,7 @@ const getLikedBusinesses = async (userId: string) => {
         if (error instanceof ConflictError) {
             throw error
         }
-        throw new Error('Error al tratar de consultar tus negocios favoritos')
+        throw new InternalServerError('Error al tratar de consultar tus negocios favoritos')
     }
 }
 

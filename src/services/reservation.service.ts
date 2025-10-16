@@ -2,7 +2,7 @@ import { UserRoleEnum } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 import { businessService } from "./business.service";
 import { authService } from "./auth.service";
-import { ConflictError, NotFoundError } from "../middlewares/error";
+import { ConflictError, InternalServerError, NotFoundError } from "../middlewares/error";
 
 const getReservations = async (user: any) => {
     const {
@@ -37,7 +37,7 @@ const getReservations = async (user: any) => {
 
             return reservations
         } catch (error) {
-            throw new Error("Error al obtener las reservaciones")
+            throw new InternalServerError("Error al obtener las reservaciones")
         }
     } else {
         try {
@@ -56,7 +56,7 @@ const getReservations = async (user: any) => {
 
             return reservations
         } catch (error) {
-            throw new Error("Error al obtener las reservaciones")
+            throw new InternalServerError("Error al obtener las reservaciones")
         }
     }
 }
@@ -91,7 +91,7 @@ const getReservationsByUserId = async (userId: string) => {
 
         return reservations
     } catch (error) {
-        throw new Error("Error al obtener las reservaciones")
+        throw new InternalServerError("Error al obtener las reservaciones")
     }
 }
 
@@ -128,7 +128,7 @@ const createReservation = async (body: any) => {
         if (error instanceof ConflictError) {
             throw error
         }
-        throw new Error("Error al tratar de crear la reservacion")
+        throw new InternalServerError("Error al tratar de crear la reservacion")
     }
 }
 
@@ -182,7 +182,7 @@ const cancelReservation = async (reservationId: string, body: any) => {
         if (error instanceof ConflictError) {
             throw error
         }
-        throw new Error("Error al tratar de cancelar la reservación")
+        throw new InternalServerError("Error al tratar de cancelar la reservación")
     }
 }
 
@@ -262,7 +262,7 @@ const confirmReservation = async (reservationId: string) => {
         if (error instanceof ConflictError) {
             throw error
         }
-        throw new Error("Error al tratar de confirmar la reservación")
+        throw new InternalServerError("Error al tratar de confirmar la reservación")
     }
 }
 
@@ -295,7 +295,7 @@ const completeReservation = async (reservationId: string) => {
         if (error instanceof ConflictError) {
             throw error
         }
-        throw new Error("Error al tratar de completar la reservación")
+        throw new InternalServerError("Error al tratar de completar la reservación")
     }
 }
 
