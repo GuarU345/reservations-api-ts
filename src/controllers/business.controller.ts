@@ -1,14 +1,21 @@
+import { UserRoleEnum } from "@prisma/client"
 import { NextFunction, Request, Response } from "express"
 import { businessService } from "../services/business.service"
 import { businessSchema } from "../schemas/business.schema"
 import { ValidationError } from "../middlewares/error"
 
 const getBusinesses = async (req: Request, res: Response, next: NextFunction) => {
-    const { categoryId } = req.query
+    const { categoryId, owner } = req.query
     const userId = req.user?.id
+    const role = req.user?.role as UserRoleEnum | undefined
 
     try {
-        const businesses = await businessService.getBusinesses(userId, categoryId as string)
+        const businesses = await businessService.getBusinesses({
+            requesterId: userId,
+            requesterRole: role,
+            categoryId: typeof categoryId === "string" ? categoryId : undefined,
+            onlyOwner: owner === "true",
+        })
         return res.status(200).json(businesses)
     } catch (error) {
         next(error)
@@ -86,7 +93,7 @@ const deleteBusiness = async (req: Request, res: Response, next: NextFunction) =
         const deletedBusiness = await businessService.deleteBusiness(id, userId!)
         return res.status(200).json(deletedBusiness)
     } catch (error) {
-
+        next(error)
     }
 }
 
