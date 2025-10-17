@@ -267,6 +267,8 @@ const confirmReservation = async (reservationId: string) => {
 }
 
 const completeReservation = async (reservationId: string) => {
+    const currentDate = new Date()
+
     const reservation = await getReservationById(reservationId)
 
     if (reservation.status === "COMPLETED") {
@@ -279,6 +281,12 @@ const completeReservation = async (reservationId: string) => {
 
     if (reservation.status === "PENDING") {
         throw new ConflictError("No se puede completar una reservación pendiente, debe ser confirmada primero")
+    }
+
+    const endTime = new Date(reservation.end_time)
+
+    if (currentDate < endTime) {
+        throw new ConflictError("No se puede completar la reservacion antes de que finalize")
     }
 
     try {
