@@ -6,7 +6,9 @@ import { businessHoursService } from "./business-hours.service"
 import { authService } from "./auth.service"
 import { userService } from "./user.service"
 
-const getBusinesses = async (userId?: string, categoryId?: string) => {
+const getBusinesses = async (userId: string, categoryId?: string) => {
+    const user = await authService.getUserById(userId!)
+
     try {
         const businesses = await prisma.businesses.findMany({
             where: {
@@ -22,7 +24,7 @@ const getBusinesses = async (userId?: string, categoryId?: string) => {
             }
         })
 
-        if (userId) {
+        if (user.role === "CUSTOMER") {
             const likedBusinesses = await userService.getLikedBusinesses(userId)
 
             const likedBusinessIds = likedBusinesses.map(liked => liked.id)
@@ -33,6 +35,14 @@ const getBusinesses = async (userId?: string, categoryId?: string) => {
             }))
 
             return businessesWithLike
+        }
+
+        if (user.role === "BUSINESS_OWNER") {
+            const ownerBusinesses = businesses.filter(business => business.user_id === user.id)
+            return ownerBusinesses.map(business => ({
+                ...business,
+                liked: false
+            }))
         }
 
         return businesses.map(business => ({
