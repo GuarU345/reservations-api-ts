@@ -47,7 +47,7 @@ model businesses {
   description String   @db.LongText
   address     String
   phone       String   @unique
-  email       String   @unique
+  email       String
   active      Boolean  @default(true)
   created_at  DateTime @default(now())
 
