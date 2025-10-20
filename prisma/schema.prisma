@@ -90,16 +90,16 @@ model business_hours {
 }
 
 model reservations {
-  id                        String                      @id @default(uuid())
+  id                        String                     @id @default(uuid())
   business_id               String
   user_id                   String
   start_time                DateTime
   end_time                  DateTime
   number_of_people          Int
-  status                    StatusEnum                  @default(PENDING)
-  active                    Boolean                     @default(true)
-  created_at                DateTime                    @default(now())
-  reservation_cancellations reservation_cancellations[]
+  status                    StatusEnum                 @default(PENDING)
+  active                    Boolean                    @default(true)
+  created_at                DateTime                   @default(now())
+  reservation_cancellations reservation_cancellations?
 
   businesses businesses @relation(fields: [business_id], references: [id])
   users      users      @relation(fields: [user_id], references: [id])
@@ -107,7 +107,7 @@ model reservations {
 
 model reservation_cancellations {
   id             String   @id @default(uuid())
-  reservation_id String
+  reservation_id String   @unique
   reason         String
   cancelled_by   String
   cancelled_at   DateTime @default(now())
