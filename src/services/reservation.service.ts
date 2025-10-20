@@ -46,9 +46,16 @@ const getReservations = async (user: any) => {
                     user_id: userId
                 },
                 include: {
+                    businesses: {
+                        select: {
+                            name: true
+                        }
+                    },
                     reservation_cancellations: {
                         select: {
-                            reason: true
+                            reason: true,
+                            cancelled_by: true,
+                            cancelled_at: true
                         }
                     }
                 },
@@ -141,6 +148,7 @@ const cancelReservation = async (reservationId: string, body: any) => {
         reason
     } = body
 
+    const user = await authService.getUserById(userId)
     const reservation = await getReservationById(reservationId)
     const business = await businessService.getBusinessById(reservation.business_id)
 
@@ -173,7 +181,7 @@ const cancelReservation = async (reservationId: string, body: any) => {
                 data: {
                     reservation_id: reservationId,
                     reason,
-                    cancelled_by: userId
+                    cancelled_by: user.name
                 }
             })
 
