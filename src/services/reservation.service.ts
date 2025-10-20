@@ -3,6 +3,7 @@ import { prisma } from "../utils/prisma";
 import { businessService } from "./business.service";
 import { authService } from "./auth.service";
 import { ConflictError, InternalServerError, NotFoundError } from "../middlewares/error";
+import { notificationService } from "./notification.service";
 
 const getReservations = async (user: any) => {
     const {
@@ -76,6 +77,13 @@ const getReservationById = async (reservationId: string) => {
         const reservation = await prisma.reservations.findUnique({
             where: {
                 id: reservationId
+            },
+            include: {
+                businesses: {
+                    select: {
+                        name: true
+                    }
+                }
             }
         })
 
@@ -188,6 +196,13 @@ const cancelReservation = async (reservationId: string, body: any) => {
             return updatedReservation
         })
 
+        const notificationData = {
+            title: "Reservación Cancelada",
+            message: `Tu reservación en ${reservation.businesses.name} ha sido cancelada`
+        }
+
+        await notificationService.notify(reservation.user_id, notificationData)
+
         return canceledReservation
     } catch (error) {
         if (error instanceof ConflictError) {
@@ -268,6 +283,13 @@ const confirmReservation = async (reservationId: string) => {
             }
         })
 
+        const notificationData = {
+            title: "Reservación Confirmada",
+            message: `Tu reservación en ${reservation.businesses.name} ha sido confirmada`
+        }
+
+        await notificationService.notify(reservation.user_id, notificationData)
+
         return confirmedReservation
     } catch (error) {
         if (error instanceof ConflictError) {
@@ -309,6 +331,14 @@ const completeReservation = async (reservationId: string) => {
                 status: "COMPLETED"
             }
         })
+
+        const notificationData = {
+            title: "Reservación Completada",
+            message: `Tu reservación en ${reservation.businesses.name} ha sido marcada como completada`
+        }
+
+        await notificationService.notify(reservation.user_id, notificationData)
+
         return completedReservation
     } catch (error) {
         if (error instanceof ConflictError) {
