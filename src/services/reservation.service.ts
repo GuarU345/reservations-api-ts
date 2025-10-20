@@ -51,6 +51,9 @@ const getReservations = async (user: any) => {
                             reason: true
                         }
                     }
+                },
+                orderBy: {
+                    start_time: 'desc'
                 }
             })
 
