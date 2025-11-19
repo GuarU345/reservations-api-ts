@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                  String                @id @default(uuid())
+  name                String
+  email               String                @unique
+  password            String
+  role                UserRoleEnum
+  phone               String                @unique
+  active              Boolean               @default(true)
+  created_at          DateTime              @default(now())
+  tokens              tokens[]
+  businesses          businesses[]
+  reservations        reservations[]
+  user_business_likes user_business_likes[]
+  push_subscriptions  push_subscriptions[]
+}
+
+model tokens {
+  id         String   @id @default(uuid())
+  user_id    String
+  token      String   @db.LongText
+  active     Boolean  @default(true)
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  users users @relation(fields: [user_id], references: [id])
+}
+
+model businesses {
+  id          String   @id @default(uuid())
+  user_id     String
+  category_id String
+  name        String
+  description String   @db.LongText
+  address     String
+  phone       String   @unique
+  email       String
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  users               users                 @relation(fields: [user_id], references: [id])
+  business_categories business_categories   @relation(fields: [category_id], references: [id])
+  business_config     business_config[]
+  business_hours      business_hours[]
+  reservations        reservations[]
+  user_business_likes user_business_likes[]
+}
+
+model business_categories {
+  id         String       @id @default(uuid())
+  category   String
+  active     Boolean      @default(true)
+  created_at DateTime     @default(now())
+  businesses businesses[]
+}
+
+model business_config {
+  id          String   @id @default(uuid())
+  business_id String
+  logo        String
+  color       String
+  created_at  DateTime @default(now())
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+}
+
+model business_hours {
+  id          String   @id @default(uuid())
+  business_id String
+  day_of_week Int
+  open_time   String?
+  close_time  String?
+  is_closed   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+}
+
+model reservations {
+  id                        String                     @id @default(uuid())
+  business_id               String
+  user_id                   String
+  start_time                DateTime
+  end_time                  DateTime
+  number_of_people          Int
+  status                    StatusEnum                 @default(PENDING)
+  active                    Boolean                    @default(true)
+  created_at                DateTime                   @default(now())
+  reservation_cancellations reservation_cancellations?
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+  users      users      @relation(fields: [user_id], references: [id])
+}
+
+model reservation_cancellations {
+  id             String   @id @default(uuid())
+  reservation_id String   @unique
+  reason         String
+  cancelled_by   String
+  cancelled_at   DateTime @default(now())
+
+  reservations reservations @relation(fields: [reservation_id], references: [id])
+}
+
+model user_business_likes {
+  id          String @id @default(uuid())
+  user_id     String
+  business_id String
+
+  businesses businesses @relation(fields: [business_id], references: [id])
+  users      users      @relation(fields: [user_id], references: [id])
+}
+
+model push_subscriptions {
+  id              String    @id @default(uuid())
+  user_id         String
+  endpoint        String    @unique
+  p256dh          String
+  auth            String
+  expiration_time DateTime?
+  user_agent      String?
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
+}
+
+enum StatusEnum {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum UserRoleEnum {
+  BUSINESS_OWNER
+  CUSTOMER
+}
