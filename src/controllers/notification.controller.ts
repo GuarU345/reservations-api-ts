@@ -17,6 +17,20 @@ const subscribe = async (req: Request, res: Response, next: NextFunction) => {
     }
 }
 
+const isActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
+    const { endpoint } = req.query
+
+    try {
+        const isActive = await notificationService.isActiveSubscription(endpoint as string)
+        res.status(200).json({
+            active: isActive
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const notificationController = {
-    subscribe
+    subscribe,
+    isActiveSubscription
 }

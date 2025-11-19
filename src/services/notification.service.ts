@@ -6,6 +6,7 @@ import webpush from "web-push"
 const subscribe = async (body: any) => {
     const {
         userId,
+        type,
         endpoint,
         p256dh,
         auth,
@@ -16,6 +17,7 @@ const subscribe = async (body: any) => {
         const subscription = await prisma.push_subscriptions.create({
             data: {
                 user_id: userId,
+                type,
                 endpoint,
                 p256dh,
                 auth,
@@ -77,7 +79,22 @@ const notify = async (userId: string, body: any) => {
     }
 }
 
+const isActiveSubscription = async (endpoint: string) => {
+    try {
+        const activeSubscription = await prisma.push_subscriptions.findFirst({
+            where: {
+                endpoint
+            }
+        })
+
+        return activeSubscription?.active
+    } catch (error) {
+        throw new InternalServerError('Error al tratar de encontrar la subscripcion')
+    }
+}
+
 export const notificationService = {
     subscribe,
-    notify
+    notify,
+    isActiveSubscription
 }

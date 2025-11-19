@@ -69,12 +69,12 @@ const signin = async (body: any) => {
             }
         })
 
-        if (isRegister?.role !== role) {
-            throw new UnauthorizedError("No tienes permiso para acceder a esta aplicación")
-        }
-
         if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
             throw new UnauthorizedError("Credenciales invalidas")
+        }
+
+        if (isRegister?.role !== role) {
+            throw new UnauthorizedError("No tienes permiso para acceder a esta aplicación")
         }
 
         const secretKey = process.env.JWT_SECRET || ""
