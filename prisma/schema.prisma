@@ -126,16 +126,17 @@ model user_business_likes {
 }
 
 model push_subscriptions {
-  id              String    @id @default(uuid())
+  id              String       @id @default(uuid())
   user_id         String
-  endpoint        String    @unique
+  type            PlatformEnum
+  endpoint        String       @unique
   p256dh          String
   auth            String
   expiration_time DateTime?
   user_agent      String?
-  active          Boolean   @default(true)
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  active          Boolean      @default(true)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
 
   user users @relation(fields: [user_id], references: [id])
 }
@@ -150,4 +151,9 @@ enum StatusEnum {
 enum UserRoleEnum {
   BUSINESS_OWNER
   CUSTOMER
+}
+
+enum PlatformEnum {
+  WEB
+  ANDROID
 }
