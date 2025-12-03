@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc src/index.ts"
+    "postinstall": "prisma generate",
+    "build": "tsc",
+    "start": "node dist/src/index.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -28,6 +30,7 @@
     "@types/express": "5.0.3",
     "@types/jsonwebtoken": "9.0.10",
     "@types/web-push": "^3.6.4",
+    "tsx": "^4.21.0",
     "typescript": "5.9.2"
   }
 }
