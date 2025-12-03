@@ -1,8 +1,10 @@
 import { z } from "zod"
 import { DateTime } from "luxon"
 
+const BUSINESS_TZ = "America/Mexico_City";
+
 const parseDate = (date: string) => {
-    return DateTime.fromISO(date, { zone: "utc" })
+    return DateTime.fromISO(date, { zone: BUSINESS_TZ })
 }
 
 export const reservationSchema = z.object({
