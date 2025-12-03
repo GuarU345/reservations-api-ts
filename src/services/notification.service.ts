@@ -42,7 +42,10 @@ const notify = async (userId: string, body: any) => {
     try {
         const subscriptions = await prisma.push_subscriptions.findMany({
             where: {
-                user_id: user.id
+                AND: [
+                    { user_id: user.id },
+                    { active: true }
+                ]
             }
         })
 
