@@ -20,25 +20,21 @@ export const reservationSchema = z.object({
         message: "La hora de finalización debe ser posterior a la hora de inicio",
         path: ["endTime"],
     })
-    // Validar que ambas horas estén dentro del rango permitido (08:00 - 22:00)
     .refine((data) => {
         const start = new Date(data.startTime)
         const end = new Date(data.endTime)
 
-        const startMinutes = start.getHours() * 60 + start.getMinutes()
-        const endMinutes = end.getHours() * 60 + end.getMinutes()
-
-        const OPEN_TIME = 8 * 60  // 08:00
-        const CLOSE_TIME = 22 * 60 // 22:00
-
         return (
-            startMinutes >= OPEN_TIME &&
-            endMinutes <= CLOSE_TIME
+            start.getFullYear() === end.getFullYear() &&
+            start.getMonth() === end.getMonth() &&
+            start.getDate() === end.getDate()
         )
-    }, {
-        message: "Las horas de la reservación deben estar entre 08:00 y 22:00",
-        path: ["startTime"],
-    })
+    },
+        {
+            message: "La reservación debe de ser dentro del mismo dia",
+            path: ["endTime"]
+        }
+    )
 
 export const cancelReservationSchema = z.object({
     reason: z

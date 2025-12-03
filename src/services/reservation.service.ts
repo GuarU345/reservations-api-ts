@@ -33,7 +33,11 @@ const getReservations = async (user: any) => {
                             cancelled_at: true
                         }
                     }
-                }
+                },
+                orderBy: [
+                    { start_time: 'desc' },
+                    { active: 'asc' }
+                ]
             })
 
             return reservations
@@ -60,9 +64,10 @@ const getReservations = async (user: any) => {
                         }
                     }
                 },
-                orderBy: {
-                    start_time: 'desc'
-                }
+                orderBy: [
+                    { start_time: 'desc' },
+                    { active: 'asc' }
+                ]
             })
 
             return reservations
