@@ -1,40 +1,52 @@
 import { z } from "zod"
+import { DateTime } from "luxon"
+
+const BUSINESS_TZ = "America/Mexico_City";
+
+const parseDate = (date: string) => {
+    return DateTime.fromISO(date, { zone: BUSINESS_TZ })
+}
 
 export const reservationSchema = z.object({
     businessId: z.string({ message: "El negocio es requerido" }),
 
     startTime: z.string({ message: "La hora de inicio es requerida" })
-        .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de inicio debe ser válida" })
-        .refine((date) => new Date(date) > new Date(), { message: "La hora de inicio debe ser futura" }),
+        .refine((date) => parseDate(date).isValid, {
+            message: "La hora de inicio debe ser válida",
+        })
+        .refine((date) => parseDate(date) > DateTime.utc(), {
+            message: "La hora de inicio debe ser futura",
+        }),
 
     endTime: z.string({ message: "La hora de finalización es requerida" })
-        .refine((date) => !isNaN(Date.parse(date)), { message: "La hora de finalización debe ser válida" })
-        .refine((date) => new Date(date) > new Date(), { message: "La hora de finalización debe ser futura" }),
+        .refine((date) => parseDate(date).isValid, {
+            message: "La hora de finalización debe ser válida",
+        })
+        .refine((date) => parseDate(date) > DateTime.utc(), {
+            message: "La hora de finalización debe ser futura",
+        }),
 
     numberOfPeople: z.number({ message: "El número de personas debe ser un número" })
         .min(1, { message: "Debe haber al menos una persona" })
         .max(8, { message: "No se permite más de 8 personas por reservación" }),
 })
-    // Validar que la hora de fin sea posterior a la de inicio
-    .refine((data) => new Date(data.endTime) > new Date(data.startTime), {
+    .refine((data) => parseDate(data.endTime) > parseDate(data.startTime), {
         message: "La hora de finalización debe ser posterior a la hora de inicio",
         path: ["endTime"],
     })
     .refine((data) => {
-        const start = new Date(data.startTime)
-        const end = new Date(data.endTime)
+        const start = parseDate(data.startTime);
+        const end = parseDate(data.endTime);
 
         return (
-            start.getFullYear() === end.getFullYear() &&
-            start.getMonth() === end.getMonth() &&
-            start.getDate() === end.getDate()
-        )
-    },
-        {
-            message: "La reservación debe de ser dentro del mismo dia",
-            path: ["endTime"]
-        }
-    )
+            start.year === end.year &&
+            start.month === end.month &&
+            start.day === end.day
+        );
+    }, {
+        message: "La reservación debe de ser dentro del mismo día",
+        path: ["endTime"],
+    });
 
 export const cancelReservationSchema = z.object({
     reason: z
