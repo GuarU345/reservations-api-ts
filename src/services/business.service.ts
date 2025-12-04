@@ -20,6 +20,17 @@ const getBusinesses = async (userId: string, categoryId?: string) => {
                     select: {
                         category: true
                     }
+                },
+                business_hours: {
+                    select: {
+                        day_of_week: true,
+                        open_time: true,
+                        close_time: true,
+                        is_closed: true
+                    },
+                    orderBy: {
+                        day_of_week: 'asc'
+                    }
                 }
             }
         })
