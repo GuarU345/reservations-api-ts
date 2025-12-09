@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { signinSchema, userSchema } from "../schemas/user.schema";
 import { authService } from "../services/auth.service";
 import { UnauthorizedError, ValidationError } from "../middlewares/error";
+import { verifyCodeSchema } from "../schemas/code.schema";
 
 const signup = async (req: Request, res: Response, next: NextFunction) => {
     const result = userSchema.safeParse(req.body)
@@ -69,9 +70,32 @@ const isActiveToken = async (req: Request, res: Response, next: NextFunction) =>
     }
 }
 
+const verifyCode = async (req: Request, res: Response, next: NextFunction) => {
+    const result = verifyCodeSchema.safeParse(req.body)
+
+    if (!result.success) {
+        throw new ValidationError(result.error)
+    }
+
+    const body = result.data
+
+    try {
+        const userValidated = await authService.verifyCode(body)
+
+        res.status(200).json({
+            message: "Codigo verificado correctamente",
+            token: userValidated.token,
+            user_id: userValidated.user.id,
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const authController = {
     signup,
     signin,
     logout,
-    isActiveToken
+    isActiveToken,
+    verifyCode
 }

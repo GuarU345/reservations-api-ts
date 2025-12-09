@@ -3,6 +3,8 @@ import { prisma } from "../utils/prisma"
 import jwt from "jsonwebtoken"
 import { AuthError, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from "../middlewares/error"
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { codeTemplate } from "../utils/lib/mail/templates"
+import { sendEmail } from "../utils/lib/mail/functions"
 
 const signup = async (body: any) => {
     const { name, email, password, phone, role } = body
@@ -77,52 +79,12 @@ const signin = async (body: any) => {
             throw new UnauthorizedError("No tienes permiso para acceder a esta aplicación")
         }
 
-        const secretKey = process.env.JWT_SECRET || ""
-
-        const token = jwt.sign(
-            { id: isRegister.id, email: isRegister.email, role: isRegister.role },
-            secretKey,
-            { expiresIn: "12h" }
-        )
-
-        const result = await prisma.$transaction(async (tx) => {
-            await tx.tokens.updateMany({
-                where: {
-                    user_id: isRegister.id,
-                    active: true
-                },
-                data: {
-                    active: false
-                }
-            })
-
-            const newToken = await tx.tokens.create({
-                data: {
-                    token: token,
-                    user_id: isRegister.id,
-                    expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000)
-                },
-                include: {
-                    users: {
-                        select: {
-                            name: true,
-                            email: true,
-                            role: true
-                        }
-                    }
-                }
-            })
-
-            return newToken
-        })
+        const userCode = await generateCode(isRegister)
+        await sendCodeEmail(userCode.user_email, userCode.code)
 
         return {
-            token: result.token,
-            user: {
-                name: result.users.name,
-                email: result.users.email,
-                role: result.users.role
-            }
+            user_id: isRegister.id,
+            email: isRegister.email
         }
     } catch (error) {
         throw error
@@ -226,6 +188,143 @@ const isActiveToken = async (token: string) => {
     }
 }
 
+const generateCode = async (userData: any) => {
+    try {
+        await prisma.user_codes.updateMany({
+            where: {
+                AND: [
+                    { user_id: userData.id },
+                    { active: true }
+                ]
+            },
+            data: {
+                active: false
+            }
+        })
+
+        const code = Math.floor(100000 + Math.random() * 900000)
+
+        await prisma.user_codes.create({
+            data: {
+                code: await argon2.hash(code.toString()),
+                user_id: userData.id,
+                expiration_date: new Date(Date.now() + 5 * 60 * 1000),
+                active: true
+            }
+        })
+
+        return {
+            user_id: userData.id,
+            user_email: userData.email,
+            code: code
+        }
+    } catch (error) {
+        throw new InternalServerError("Error al tratar de generar el codigo")
+    }
+}
+
+const sendCodeEmail = async (email: string, code: number) => {
+    const mailOptions = {
+        from: process.env.MAIL_FROM,
+        to: email,
+        subject: "Código de Verificación",
+        html: codeTemplate(code),
+    };
+
+    await sendEmail(mailOptions)
+}
+
+const verifyCode = async (body: any) => {
+    const { user_id, code } = body;
+
+    const userCode = await prisma.user_codes.findFirst({
+        where: {
+            user_id,
+            active: true,
+        },
+    });
+
+    if (!userCode) {
+        throw new AuthError("Codigo no encontrado");
+    }
+
+    const isValid = await argon2.verify(userCode.code, String(code));
+
+    if (!isValid) {
+        throw new AuthError("Codigo invalido");
+    }
+
+    const isExpired = new Date() > userCode.expiration_date;
+
+    if (isExpired) {
+        throw new AuthError("Codigo expirado");
+    }
+
+    await prisma.user_codes.update({
+        where: {
+            id: userCode.id,
+        },
+        data: {
+            active: false,
+        },
+    });
+
+    return await generateToken(user_id)
+}
+
+const generateToken = async (userId: string) => {
+    const user = await getUserById(userId)
+
+    const secretKey = process.env.JWT_SECRET || ""
+
+    const token = jwt.sign(
+        { user_id: user.id, email: user.email, role: user.role },
+        secretKey,
+        { expiresIn: "12h" }
+    )
+
+    const result = await prisma.$transaction(async (tx) => {
+        await tx.tokens.updateMany({
+            where: {
+                user_id: user.id,
+                active: true
+            },
+            data: {
+                active: false
+            }
+        })
+
+        const newToken = await tx.tokens.create({
+            data: {
+                token: token,
+                user_id: user.id,
+                expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000)
+            },
+            include: {
+                users: {
+                    select: {
+                        name: true,
+                        email: true,
+                        role: true
+                    }
+                }
+            }
+        })
+
+        return newToken
+    })
+
+    return {
+        token: result.token,
+        user: {
+            id: result.user_id,
+            name: result.users.name,
+            email: result.users.email,
+            role: result.users.role
+        }
+    }
+}
+
 export const authService = {
     signup,
     signin,
@@ -233,5 +332,6 @@ export const authService = {
     logout,
     canCreateBusiness,
     canCreateReservation,
-    isActiveToken
+    isActiveToken,
+    verifyCode
 }
