@@ -86,6 +86,7 @@ const verifyCode = async (req: Request, res: Response, next: NextFunction) => {
             message: "Codigo verificado correctamente",
             token: userValidated.token,
             user_id: userValidated.user.id,
+            user: userValidated.user,
         })
     } catch (error) {
         next(error)
