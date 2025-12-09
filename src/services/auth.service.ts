@@ -83,8 +83,10 @@ const signin = async (body: any) => {
         await sendCodeEmail(userCode.user_email, userCode.code)
 
         return {
-            user_id: isRegister.id,
-            email: isRegister.email
+            user: {
+                id: isRegister.id,
+                email: isRegister.email
+            }
         }
     } catch (error) {
         throw error
